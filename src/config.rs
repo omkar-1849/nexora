@@ -16,7 +16,7 @@ impl EnvironmentConfig {
             workspace_root: base.join("AI-Native-Environment").join("workspace"),
 
             postgres_url: std::env::var("AI_NATIVE_DATABASE_URL")
-                .expect("AI_NATIVE_DATABASE_URL environment variable must be set"),
+                .unwrap_or_else(|_| "host=localhost user=postgres password=postgres dbname=ai_native_env".to_string()),
         }
     }
 }

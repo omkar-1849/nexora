@@ -1,19 +1,16 @@
+use ai_native_env::config::EnvironmentConfig;
+use ai_native_env::runtime::Runtime;
 use eframe::egui;
 
-use ai_native_env::config::EnvironmentConfig;
-use ai_native_env::explorer::ExplorerView;
-use ai_native_env::runtime::Runtime;
-
-pub struct EnvironmentApp {
+struct TerminalApp {
     runtime: Runtime,
     command: String,
     output: Vec<String>,
     terminal_started: bool,
-    explorer: ExplorerView,
 }
 
-impl EnvironmentApp {
-    pub fn new() -> Self {
+impl TerminalApp {
+    fn new() -> Self {
         let config = EnvironmentConfig::new();
         let mut runtime = Runtime::new(config);
 
@@ -44,13 +41,16 @@ impl EnvironmentApp {
             command: String::new(),
             output,
             terminal_started,
-            explorer: ExplorerView::new(),
         }
     }
 }
 
-impl eframe::App for EnvironmentApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+impl eframe::App for TerminalApp {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _frame: &mut eframe::Frame,
+    ) {
         if self.terminal_started {
             let new_output = self.runtime.read_terminal_output();
 
@@ -58,25 +58,16 @@ impl eframe::App for EnvironmentApp {
                 self.output.extend(new_output);
             }
 
-            ui.ctx()
-                .request_repaint_after(std::time::Duration::from_millis(50));
+            ui.ctx().request_repaint_after(
+                std::time::Duration::from_millis(50),
+            );
         }
 
-        ui.heading("AI-Native Computing Environment");
-
-        ui.separator();
-
-        self.explorer
-            .render(ui, self.runtime.filesystem_mut());
-
-        ui.separator();
-
-        ui.label("Terminal");
-
+        ui.heading("AI-Native Terminal");
         ui.separator();
 
         egui::ScrollArea::vertical()
-            .max_height(400.0)
+            .auto_shrink([false, false])
             .show(ui, |ui| {
                 for line in &self.output {
                     ui.monospace(line);
@@ -86,32 +77,53 @@ impl eframe::App for EnvironmentApp {
         ui.separator();
 
         ui.horizontal(|ui| {
-            let response = ui.text_edit_singleline(&mut self.command);
+            let response =
+                ui.text_edit_singleline(&mut self.command);
 
             let enter_pressed =
-                response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                response.lost_focus()
+                    && ui.input(|i| {
+                        i.key_pressed(egui::Key::Enter)
+                    });
 
             let execute_clicked = ui.button("Run").clicked();
 
-            if self.terminal_started && (execute_clicked || enter_pressed) {
+            if self.terminal_started
+                && (execute_clicked || enter_pressed)
+            {
                 let command = self.command.trim().to_string();
 
                 if !command.is_empty() {
                     self.output.push(format!("> {}", command));
 
-                    match self.runtime.execute_terminal_command(&command) {
+                    match self
+                        .runtime
+                        .execute_terminal_command(&command)
+                    {
                         Ok(_) => {}
                         Err(error) => {
-                            self.output.push(format!("ERROR: {:?}", error));
+                            self.output
+                                .push(format!("ERROR: {:?}", error));
                         }
                     }
 
-                    let new_output = self.runtime.read_terminal_output();
-                    self.output.extend(new_output);
+                    let new_output =
+                        self.runtime.read_terminal_output();
 
+                    self.output.extend(new_output);
                     self.command.clear();
                 }
             }
         });
     }
+}
+
+fn main() -> eframe::Result<()> {
+    let options = eframe::NativeOptions::default();
+
+    eframe::run_native(
+        "AI-Native Terminal",
+        options,
+        Box::new(|_cc| Ok(Box::new(TerminalApp::new()))),
+    )
 }

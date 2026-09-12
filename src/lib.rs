@@ -8,3 +8,4 @@ pub mod shell;
 pub mod shell_session;
 pub mod terminal;
 pub mod workspace;
+pub mod explorer;

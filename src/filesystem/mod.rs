@@ -6,6 +6,7 @@ pub mod path;
 pub mod permissions;
 pub mod user;
 
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -640,4 +641,40 @@ impl FileSystem {
     pub fn metadata(&self, path: &VirtualPath) -> Option<&FileMetadata> {
         self.node(path).map(|node| &node.metadata)
     }
+
+
+
+    pub fn adopt_directory(
+    &mut self,
+    path: &VirtualPath,
+    owner_id: u32,
+    permissions: u16,
+) -> EnvResult<()> {
+    if self.exists(path) {
+        return Ok(());
+    }
+
+    let physical = self.backend.resolve(path)?;
+
+    if !physical.exists() {
+        return self.create_directory(path);
+    }
+
+    if !physical.is_dir() {
+        return Err(EnvError::AlreadyExists(path.to_string()));
+    }
+
+    let node = FileNode::new_directory(
+        path.clone(),
+        owner_id,
+        permissions,
+    );
+
+    self.persist_node(&node)?;
+    self.nodes.insert(path.to_string(), node);
+
+    Ok(())
+}
+
+
 }

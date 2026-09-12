@@ -8,7 +8,7 @@ fn test_storage_root() -> PathBuf {
 
 fn database_url() -> String {
     std::env::var("AI_NATIVE_DATABASE_URL")
-        .expect("AI_NATIVE_DATABASE_URL environment variable must be set for integration tests")
+        .unwrap_or_else(|_| "host=localhost user=postgres password=postgres dbname=ai_native_env".to_string())
 }
 
 fn cleanup_test_metadata(database_url: &str, paths: &[&str]) {

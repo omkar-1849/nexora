@@ -50,6 +50,7 @@ impl Runtime {
             .current_user()
             .map(|u| u.id)
             .unwrap_or(DEFAULT_USER_ID);
+
         self.filesystem.set_current_user(ROOT_USER_ID)?;
 
         let directories = ["home", "workspace", "projects", "data", "models", "tmp"];
@@ -58,19 +59,21 @@ impl Runtime {
             let path = root.join(directory)?;
 
             if !self.filesystem.exists(&path) {
-                self.filesystem.create_directory(&path)?;
+                self.filesystem.adopt_directory(
+                    &path,
+                    ROOT_USER_ID,
+                    0o755,
+                )?;
             }
         }
 
         let workspace = root.join("workspace")?;
-        if self.filesystem.exists(&workspace) {
-            self.filesystem.change_owner(&workspace, DEFAULT_USER_ID)?;
-        }
+        self.filesystem
+            .change_owner(&workspace, DEFAULT_USER_ID)?;
 
         let home = root.join("home")?;
-        if self.filesystem.exists(&home) {
-            self.filesystem.change_owner(&home, DEFAULT_USER_ID)?;
-        }
+        self.filesystem
+            .change_owner(&home, DEFAULT_USER_ID)?;
 
         self.filesystem.set_current_user(previous_user)?;
 
