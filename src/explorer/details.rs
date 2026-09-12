@@ -7,7 +7,7 @@ use crate::filesystem::FileSystem;
 
 pub fn render(
     ui: &mut egui::Ui,
-    filesystem: &FileSystem,
+    filesystem: &mut FileSystem,
     state: &mut ExplorerState,
 ) {
     ui.vertical(|ui| {

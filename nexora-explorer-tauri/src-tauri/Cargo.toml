@@ -1,0 +1,26 @@
+[package]
+name = "nexora-explorer-tauri"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "nexora_explorer_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ai_native_env = { path = "../../" }
+tokio = { version = "1.53.1", features = ["sync"] }
+regex = "1.13.1"
+
+[[bin]]
+name = "explorer"
+path = "src/main.rs"

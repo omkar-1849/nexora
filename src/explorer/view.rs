@@ -125,7 +125,7 @@ impl ExplorerView {
         file_grid::render(&mut playground_ui, filesystem, &mut self.state);
     }
 
-    fn handle_input(&mut self, ui: &egui::Ui, filesystem: &FileSystem) {
+    fn handle_input(&mut self, ui: &egui::Ui, filesystem: &mut FileSystem) {
         let input = ui.input(|i| i.clone());
 
         // Ctrl + F: Search

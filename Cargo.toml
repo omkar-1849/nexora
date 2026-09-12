@@ -10,3 +10,13 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 tokio-postgres = "0.7"
+[workspace]
+members = ["nexora-explorer-tauri/src-tauri"]
+default-members = [".", "nexora-explorer-tauri/src-tauri"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

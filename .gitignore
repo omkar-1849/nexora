@@ -18,3 +18,23 @@
 Thumbs.db
 [Dd]esktop.ini
 .DS_Store
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Tauri
+src-tauri/target/
+
+# Vercel/Next (just in case)
+.vercel
+
+# Local DB/artifacts
+ai_native_env_test*
+*.db
+*.sqlite

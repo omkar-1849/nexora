@@ -125,18 +125,7 @@ impl FileSystem {
     }
 
     fn load_metadata_from_database(&mut self) -> EnvResult<()> {
-        let nodes = self.run_async(self.metadata_store.load_all_nodes())?;
-
-        for (path, node_type, metadata) in nodes {
-            let node = FileNode {
-                path: path.clone(),
-                node_type,
-                metadata,
-            };
-
-            self.nodes.insert(path.to_string(), node);
-        }
-
+        // We now lazy-load metadata on demand in node() and exists().
         Ok(())
     }
 
@@ -421,10 +410,42 @@ impl FileSystem {
         }
 
         check_permission(&node.metadata, self.current_user, Permission::Read)?;
-
         check_permission(&node.metadata, self.current_user, Permission::Execute)?;
 
-        self.backend.list_directory(path)
+        let children = self.backend.list_directory(path)?;
+        
+        let current_user = self.current_user;
+        let mut adopted = Vec::new();
+
+        for child in &children {
+            if let Ok(child_path) = path.join(child) {
+                if !self.nodes.contains_key(&child_path.to_string()) {
+                    let physical = match self.backend.resolve(&child_path) {
+                        Ok(p) => p,
+                        Err(_) => continue,
+                    };
+                    
+                    let node = if physical.is_dir() {
+                        crate::filesystem::FileNode::new_directory(child_path.clone(), current_user, crate::filesystem::DEFAULT_DIRECTORY_PERMISSIONS)
+                    } else {
+                        let size = std::fs::metadata(&physical).map(|m| m.len()).unwrap_or(0);
+                        let mut n = crate::filesystem::FileNode::new_file(child_path.clone(), current_user, crate::filesystem::DEFAULT_FILE_PERMISSIONS);
+                        n.metadata.size = size;
+                        n
+                    };
+                    adopted.push(node);
+                }
+            }
+        }
+
+        for node in adopted {
+            if let Err(e) = self.persist_node(&node) {
+                eprintln!("Failed to persist reconciled node: {:?}", e);
+            }
+            self.nodes.insert(node.path.to_string(), node);
+        }
+
+        Ok(children)
     }
 
 
@@ -454,10 +475,8 @@ impl FileSystem {
 
         self.with_path_lock(&key, |filesystem| {
             let mut node = filesystem
-                .nodes
-                .get(&key)
-                .ok_or_else(|| EnvError::NotFound(key.clone()))?
-                .clone();
+                .node(path)
+                .ok_or_else(|| EnvError::NotFound(key.clone()))?;
 
             node.metadata.owner_id = new_owner_id;
             node.metadata.touch();
@@ -590,7 +609,7 @@ impl FileSystem {
     // HELPERS
     // ---------------------------------------------------------
 
-    fn ensure_parent_directory(&self, path: &VirtualPath) -> EnvResult<()> {
+    fn ensure_parent_directory(&mut self, path: &VirtualPath) -> EnvResult<()> {
         let parent = path
             .parent()
             .ok_or_else(|| EnvError::InvalidPath("Path has no parent.".to_string()))?;
@@ -630,16 +649,36 @@ impl FileSystem {
         Ok(())
     }
 
-    pub fn exists(&self, path: &VirtualPath) -> bool {
-        self.nodes.contains_key(&path.to_string())
+    pub fn exists(&mut self, path: &VirtualPath) -> bool {
+        if self.nodes.contains_key(&path.to_string()) {
+            return true;
+        }
+        // Check DB
+        if let Ok(Some(_)) = self.run_async(self.metadata_store.load_node_metadata(&path.to_string())) {
+            return true;
+        }
+        false
     }
 
-    pub fn node(&self, path: &VirtualPath) -> Option<&FileNode> {
-        self.nodes.get(&path.to_string())
+    pub fn node(&mut self, path: &VirtualPath) -> Option<FileNode> {
+        if let Some(node) = self.nodes.get(&path.to_string()) {
+            return Some(node.clone());
+        }
+        
+        if let Ok(Some((node_type, metadata))) = self.run_async(self.metadata_store.load_node(&path.to_string())) {
+            let node = FileNode {
+                path: path.clone(),
+                node_type,
+                metadata,
+            };
+            self.nodes.insert(path.to_string(), node.clone());
+            return Some(node);
+        }
+        None
     }
 
-    pub fn metadata(&self, path: &VirtualPath) -> Option<&FileMetadata> {
-        self.node(path).map(|node| &node.metadata)
+    pub fn metadata(&mut self, path: &VirtualPath) -> Option<FileMetadata> {
+        self.node(path).map(|node| node.metadata)
     }
 
 

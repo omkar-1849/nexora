@@ -45,7 +45,7 @@ pub fn render(
 
 fn render_grid_view(
     ui: &mut egui::Ui,
-    filesystem: &FileSystem,
+    filesystem: &mut FileSystem,
     state: &mut ExplorerState,
     entries: &[String],
 ) {
@@ -68,8 +68,8 @@ fn render_grid_view(
                 };
 
                 let node = filesystem.node(&item_path);
-                let is_directory = node.map(|n| n.is_directory()).unwrap_or(false);
-                let size_bytes = node.map(|n| n.metadata.size).unwrap_or(0);
+                let is_directory = node.as_ref().map(|n| n.is_directory()).unwrap_or(false);
+                let size_bytes = node.as_ref().map(|n| n.metadata.size).unwrap_or(0);
 
                 let is_selected = state.selected.as_deref() == Some(name.as_str());
 
@@ -212,7 +212,7 @@ fn render_grid_view(
 
 fn render_list_view(
     ui: &mut egui::Ui,
-    filesystem: &FileSystem,
+    filesystem: &mut FileSystem,
     state: &mut ExplorerState,
     entries: &[String],
 ) {
@@ -233,9 +233,9 @@ fn render_list_view(
         };
 
         let node = filesystem.node(&item_path);
-        let is_directory = node.map(|n| n.is_directory()).unwrap_or(false);
-        let size_bytes = node.map(|n| n.metadata.size).unwrap_or(0);
-        let permissions = node.map(|n| n.metadata.permissions).unwrap_or(0);
+        let is_directory = node.as_ref().map(|n| n.is_directory()).unwrap_or(false);
+        let size_bytes = node.as_ref().map(|n| n.metadata.size).unwrap_or(0);
+        let permissions = node.as_ref().map(|n| n.metadata.permissions).unwrap_or(0);
 
         let is_selected = state.selected.as_deref() == Some(name.as_str());
 

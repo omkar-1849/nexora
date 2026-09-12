@@ -259,6 +259,53 @@ impl MetadataStore {
         }))
     }
 
+    pub async fn load_node(&self, path: &str) -> EnvResult<Option<(NodeType, FileMetadata)>> {
+        let row = self
+            .client
+            .query_opt(
+                r#"
+                SELECT
+                    node_type,
+                    owner_id,
+                    permissions,
+                    size,
+                    created_at,
+                    modified_at,
+                    accessed_at
+                FROM filesystem_nodes
+                WHERE path = $1
+                "#,
+                &[&path],
+            )
+            .await
+            .map_err(|error| {
+                EnvError::InvalidEnvironment(format!(
+                    "Failed to load filesystem node: {}",
+                    error
+                ))
+            })?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let node_type_string: String = row.get(0);
+        let node_type = match node_type_string.as_str() {
+            "file" => NodeType::File,
+            "directory" => NodeType::Directory,
+            _ => return Err(EnvError::InvalidEnvironment(format!("Unknown node type '{}'", node_type_string))),
+        };
+
+        Ok(Some((node_type, FileMetadata {
+            owner_id: row.get::<_, i32>(1) as u32,
+            permissions: row.get::<_, i32>(2) as u16,
+            size: row.get::<_, i64>(3) as u64,
+            created_at: row.get::<_, SystemTime>(4),
+            modified_at: row.get::<_, SystemTime>(5),
+            accessed_at: row.get::<_, SystemTime>(6),
+        })))
+    }
+
     pub async fn load_all_nodes(&self) -> EnvResult<Vec<(VirtualPath, NodeType, FileMetadata)>> {
         let rows = self
             .client

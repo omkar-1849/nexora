@@ -7,8 +7,8 @@ fn test_storage_root() -> PathBuf {
 }
 
 fn database_url() -> String {
-    std::env::var("AI_NATIVE_DATABASE_URL")
-        .unwrap_or_else(|_| "host=localhost user=postgres password=postgres dbname=ai_native_env".to_string())
+    std::env::var("AI_NATIVE_TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "host=localhost user=postgres password=postgres dbname=ai_native_env_test".to_string())
 }
 
 
@@ -45,7 +45,7 @@ fn filesystem_storage_is_consistent() {
     }
 
     let database_url = database_url();
-    cleanup_test_metadata(&database_url, &["/workspace"]);
+    cleanup_test_metadata(&database_url, &["/workspace", "/projects", "/home", "/data", "/models", "/tmp"]);
 
     let mut filesystem = FileSystem::new(storage_root.clone(), &database_url)
         .expect("Failed to create filesystem");
@@ -85,6 +85,6 @@ fn filesystem_storage_is_consistent() {
     assert_eq!(content, "Consistency test");
 
     std::fs::remove_dir_all(storage_root).unwrap();
-    cleanup_test_metadata(&database_url, &["/workspace"]);
+    cleanup_test_metadata(&database_url, &["/workspace", "/projects", "/home", "/data", "/models", "/tmp"]);
 }
 
